@@ -374,8 +374,18 @@ def pass2(address_list,label_address_dict):
     if virtual_halt_count<1:
         raise ValueError("Error:No Virtual Halt Found")
     return(copied_address_list)
+    
 def imm_2_comp(immediate,num_bits): #Take the immediates and convert them into num_bit 2's complement representation, and return strings to be used in encoding functions
-    {}
+    immediate = int(immediate)
+
+    //If number is non-negative
+    if immediate>=0:
+        return format(immediate,f'0{num_bits}b')
+    //If number is negative
+    else:
+        value = (2**num_bits) + immediate
+        return format(value,f'0{num_bits}b')
+        
 def encode_R(instruction,mnemonic_dict): #Types have been distributed based on opcode. lw, jalr and addi,sltui have different opcodes hence, different classification
     mnemonic = instruction[0]
     rd = instruction[1]
@@ -387,12 +397,12 @@ def encode_R(instruction,mnemonic_dict): #Types have been distributed based on o
     opcode = mnemonic_dict[mnemonic]["opcode"]
 
    #register binary values
-    if rd in ABI_register_dict[rd]:
+    if rd in ABI_register_dict:
        rd_bin = ABI_register_dict[rd]
     else:
        rd_bin = register_name_dict[rd]
         
-    if rs1 in ABI_register_dict[rs1]:
+    if rs1 in ABI_register_dict:
        rs1_bin = ABI_register_dict[rs1]
     else:
         rs1_bin = register_name_dict[rs2]
@@ -408,7 +418,29 @@ def encode_R(instruction,mnemonic_dict): #Types have been distributed based on o
 
 
 def encode_I_arith_logic(instruction,mnemonic_dict):
-    {}
+    mnemonic = instruction[0]
+    rd = instruction[1]
+    rs1 = instruction[2]
+    imm = imm_2_comp(instruction[3],12)
+
+    funct3 = mnemonic_dict[mnemonic]["funct3"]
+    opcode = mnemonic_dict[mnemonic]["opcode"]
+
+    #register binary values
+    if rd in ABI_register_dict:
+        rd_bin = ABI_register_dict[rd]
+    else:
+        rd_bin = register_name_dict[rd]
+        
+    if rs1 in ABI_register_dict:
+        rs1_bin = ABI_register_dict[rs1]
+    else:
+        rs1_bin = register_name_dict[rs1]
+        
+    #final machine instruction
+    binary_form = imm + rs1_bin + funct3 + rd_bin + opcode
+    return binary_form
+    
 def encode_I_jalr(instruction,mnemonic_dict):
     {}
 def encode_I_lw(instruction,mnemonic_dict):
