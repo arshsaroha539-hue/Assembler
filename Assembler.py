@@ -395,7 +395,6 @@ def encode_R(instruction,mnemonic_dict): #Types have been distributed based on o
     funct7 = mnemonic_dict[mnemonic]["funct7"]
     funct3 = mnemonic_dict[mnemonic]["funct3"]
     opcode = mnemonic_dict[mnemonic]["opcode"]
-
    #register binary values
     if rd in ABI_register_dict:
        rd_bin = ABI_register_dict[rd]
@@ -411,7 +410,6 @@ def encode_R(instruction,mnemonic_dict): #Types have been distributed based on o
         rs2_bin = ABI_register_dict[rs2]
     else:
         rs2_bin = register_name_dict[rs2]
-
     #final machine instruction
     binary_form = funct7 + rs2_bin + rs1_bin + funct3 + rd_bin + opcode
     return binary_form
@@ -425,7 +423,6 @@ def encode_I_arith_logic(instruction,mnemonic_dict):
 
     funct3 = mnemonic_dict[mnemonic]["funct3"]
     opcode = mnemonic_dict[mnemonic]["opcode"]
-
     #register binary values
     if rd in ABI_register_dict:
         rd_bin = ABI_register_dict[rd]
@@ -436,7 +433,6 @@ def encode_I_arith_logic(instruction,mnemonic_dict):
         rs1_bin = ABI_register_dict[rs1]
     else:
         rs1_bin = register_name_dict[rs1]
-        
     #final machine instruction
     binary_form = imm + rs1_bin + funct3 + rd_bin + opcode
     return binary_form
@@ -444,13 +440,73 @@ def encode_I_arith_logic(instruction,mnemonic_dict):
 def encode_I_jalr(instruction,mnemonic_dict):
     {}
 def encode_I_lw(instruction,mnemonic_dict):
-    {}
+    mnemonic = instruction[0]
+    rd = instruction[1]
+    operand = instruction[2] # imm(rs1)
+
+    x = operand.index("(")
+    y = operand.index(")")
+
+    imm = imm_2_comp(operand[:x],12)
+    rs1 = operand[x+1:y]
+
+    funct3 = mnemonic_dict[mnemonic]["funct3"]
+    opcode = mnemonic_dict[mnemonic]["opcode"]
+    #register binary values
+    if rd in ABI_register_dict:
+        rd_bin = ABI_register_dict[rd]
+    else:
+        rd_bin = register_name_dict[rd]
+    if rs1 in ABI_register_dict:
+        rs1_bin = ABI_register_dict[rs1]
+    else:
+        rs1_bin = register_name_dict[rs1]
+    #final machine instruction
+    binary_form = imm + rs1_bin + funct3 + rd_bin + opcode
+    return binary_form
+
 def encode_J(instruction,mnemonic_dict):
     {}
 def encode_S(instruction,mnemonic_dict):
-    {}
+    mnemonic = instruction[0]
+    rs2 = instruction[1]
+    operand = instruction[2] #imm(rs1)
+    
+    x = operand.index("(")
+    y = operand.index(")")
+    imm = imm_2_comp(operand[:x],12)
+    rs1 = operand[x+1:y]
+    
+    funct3 = mnemonic_dict[mnemonic]["funct3"]
+    opcode = mnemonic_dict[mnemonic]["opcode"]
+    #register binary values
+    if rs2 in ABI_register_dict:
+        rs2_bin = ABI_register_dict[rs2]
+    else:
+        rs2_bin = register_name_dict[rs2]
+    if rs1 in ABI_register_dict:
+        rs1_bin = ABI_register_dict[rs1]
+    else:
+        rs1_bin = register_name_dict[rs1]
+    #final machine instruction
+    binary_form = imm[:7] + rs2_bin + rs1_bin + funct3 + imm[7:] + opcode
+    return binary_form
+    
 def encode_U(instruction,mnemonic_dict):
-    {}
+    mnemonic = instruction[0]
+    rd = instruction[1]
+    imm = format(int(instruction[2]),'020b')
+    
+    opcode = mnemonic_dict[mnemonic]["opcode"]
+    #register binary values
+    if rd in ABI_register_dict:
+        rd_bin = ABI_register_dict[rd]
+    else:
+        rd_bin = register_name_dict[rd]
+    #final machine instruction
+    binary_form = imm + rd_bin + opcode
+    return binary_form
+    
 def encode_B(instruction,mnemonic_dict):
     {}
 def encoder(final_address_list,mnemonic_dict): #return machine code to be written into output file
