@@ -377,7 +377,36 @@ def pass2(address_list,label_address_dict):
 def imm_2_comp(immediate,num_bits): #Take the immediates and convert them into num_bit 2's complement representation, and return strings to be used in encoding functions
     {}
 def encode_R(instruction,mnemonic_dict): #Types have been distributed based on opcode. lw, jalr and addi,sltui have different opcodes hence, different classification
-    {}
+    mnemonic = instruction[0]
+    rd = instruction[1]
+    rs1 = instruction[2]
+    rs2 = instruction[3]
+
+    funct7 = mnemonic_dict[mnemonic]["funct7"]
+    funct3 = mnemonic_dict[mnemonic]["funct3"]
+    opcode = mnemonic_dict[mnemonic]["opcode"]
+
+   #register binary values
+    if rd in ABI_register_dict[rd]:
+       rd_bin = ABI_register_dict[rd]
+    else:
+       rd_bin = register_name_dict[rd]
+        
+    if rs1 in ABI_register_dict[rs1]:
+       rs1_bin = ABI_register_dict[rs1]
+    else:
+        rs1_bin = register_name_dict[rs2]
+        
+    if rs2 in ABI_register_dict:
+        rs2_bin = ABI_register_dict[rs2]
+    else:
+        rs2_bin = register_name_dict[rs2]
+
+    #final machine instruction
+    binary_form = funct7 + rs2_bin + rs1_bin + funct3 + rd_bin + opcode
+    return binary_form
+
+
 def encode_I_arith_logic(instruction,mnemonic_dict):
     {}
 def encode_I_jalr(instruction,mnemonic_dict):
