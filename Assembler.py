@@ -378,10 +378,10 @@ def pass2(address_list,label_address_dict):
 def imm_2_comp(immediate,num_bits): #Take the immediates and convert them into num_bit 2's complement representation, and return strings to be used in encoding functions
     immediate = int(immediate)
 
-    //If number is non-negative
+    #If number is non-negative
     if immediate>=0:
         return format(immediate,f'0{num_bits}b')
-    //If number is negative
+    #If number is negative
     else:
         value = (2**num_bits) + immediate
         return format(value,f'0{num_bits}b')
@@ -508,7 +508,28 @@ def encode_U(instruction,mnemonic_dict):
     return binary_form
     
 def encode_B(instruction,mnemonic_dict):
-    {}
+    mnemonic = instruction[0]
+    rs1 = instruction[1]
+    rs2 = instruction[2]
+    offset = int(instruction[3])
+    funct3 = mnemonic_dict[mnemonic]["funct3"]
+    opcode = mnemonic_dict[mnemonic]["opcode"]
+    if rs1 in ABI_register_dict:
+        rs1_bin = ABI_register_dict[rs1]
+    else:
+        rs1_bin = register_name_dict[rs1]
+    if rs2 in ABI_register_dict:
+        rs2_bin = ABI_register_dict[rs2]
+    else:
+        rs2_bin = register_name_dict[rs2]
+    imm13 = imm_2_comp(offset,13)
+    imm_12 = imm13[0]
+    imm_11 = imm13[1]
+    imm_10_5 = imm13[2:8]
+    imm_4_1 = imm13[8:12]
+    binary_form = imm_12 + imm_10_5 + rs2_bin + rs1_bin + funct3 + imm_4_1 + imm_11 + opcode
+    return binary_form
+
 def encoder(final_address_list,mnemonic_dict): #return machine code to be written into output file
     {}
 def main():
