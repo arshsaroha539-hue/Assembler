@@ -438,7 +438,23 @@ def encode_I_arith_logic(instruction,mnemonic_dict):
     return binary_form
     
 def encode_I_jalr(instruction,mnemonic_dict):
-    {}
+    mnemonic = instruction[0]
+    rd = instruction[1]
+    rs1 = instruction[2]
+    imm = imm_2_comp(instruction[3],12)
+    funct3 = mnemonic_dict[mnemonic]["funct3"]
+    opcode = mnemonic_dict[mnemonic]["opcode"]
+    if rd in ABI_register_dict:
+        rd_bin = ABI_register_dict[rd]
+    else:
+        rd_bin = register_name_dict[rd]
+    if rs1 in ABI_register_dict:
+        rs1_bin = ABI_register_dict[rs1]
+    else:
+        rs1_bin = register_name_dict[rs1]
+    binary_form = imm + rs1_bin + funct3 + rd_bin + opcode
+    return binary_form
+
 def encode_I_lw(instruction,mnemonic_dict):
     mnemonic = instruction[0]
     rd = instruction[1]
@@ -546,7 +562,29 @@ def encode_B(instruction,mnemonic_dict):
     return binary_form
 
 def encoder(final_address_list,mnemonic_dict): #return machine code to be written into output file
-    {}
+    machine_code_lines = []
+    for address,line_num,instruction in final_address_list:
+        mnemonic = instruction[0]
+        mnem_type = mnemonic_dict[mnemonic]["type"]
+        if mnem_type == "R":
+            binary = encode_R(instruction,mnemonic_dict)
+        elif mnem_type == "I_arith/logic":
+            binary = encode_I_arith_logic(instruction,mnemonic_dict)
+        elif mnem_type == "I_load":
+            binary = encode_I_lw(instruction,mnemonic_dict)
+        elif mnem_type == "I_jalr":
+            binary = encode_I_jalr(instruction,mnemonic_dict)
+        elif mnem_type == "S":
+            binary = encode_S(instruction,mnemonic_dict)
+        elif mnem_type == "B":
+            binary = encode_B(instruction,mnemonic_dict)
+        elif mnem_type == "U":
+            binary = encode_U(instruction,mnemonic_dict)
+        elif mnem_type == "J":
+            binary = encode_J(instruction,mnemonic_dict)
+        machine_code_lines.append(binary)
+    return machine_code_lines
+
 def main():
     input_file = sys.argv[1]
     output_file = sys.argv[2]
@@ -554,3 +592,8 @@ def main():
     address_list, label_address_dict = pass1(instruction_list)
     final_address_list = pass2(address_list,label_address_dict)
     machine_code = encoder(final_address_list,mnemonic_dict)
+    with open(output_file,"w") as f:
+        f.write("\n".join(machine_code))
+
+if __name__ == "__main__":
+    main()
