@@ -466,7 +466,22 @@ def encode_I_lw(instruction,mnemonic_dict):
     return binary_form
 
 def encode_J(instruction,mnemonic_dict):
-    {}
+    mnemonic = instruction[0]
+    rd = instruction[1]
+    offset = int(instruction[2])
+    opcode = mnemonic_dict[mnemonic]["opcode"]
+    if rd in ABI_register_dict:
+        rd_bin = ABI_register_dict[rd]
+    else:
+        rd_bin = register_name_dict[rd]
+    imm21 = imm_2_comp(offset,21)
+    imm_20 = imm21[0]
+    imm_10_1 = imm21[10:20]
+    imm_11 = imm21[9]
+    imm_19_12 = imm21[1:9]
+    binary_form = imm_20 + imm_10_1 + imm_11 + imm_19_12 + rd_bin + opcode
+    return binary_form
+
 def encode_S(instruction,mnemonic_dict):
     mnemonic = instruction[0]
     rs2 = instruction[1]
