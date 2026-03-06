@@ -404,7 +404,7 @@ def encode_R(instruction,mnemonic_dict): #Types have been distributed based on o
     if rs1 in ABI_register_dict:
        rs1_bin = ABI_register_dict[rs1]
     else:
-        rs1_bin = register_name_dict[rs2]
+        rs1_bin = register_name_dict[rs1]
         
     if rs2 in ABI_register_dict:
         rs2_bin = ABI_register_dict[rs2]
