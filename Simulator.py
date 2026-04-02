@@ -203,8 +203,26 @@ class Instruction:
             self.control_signals.gteu = False
     def Memory_read_write(self):
         {}
+        
     def register_write_back(self):
-        {}
+        if self.control_signals.REGWRITE!=1:
+            return
+        idx = int(self.rd,2)
+        if idx==0:
+            return
+        src = self.control_signals.RESULTSRC
+        if src=="00": #ALU result
+            value = self.ALURESULT
+        elif src=="01": #Load
+            value = self.read_data
+        elif src=="10": #JAL/JALR
+            value = self.PCplusfour
+        elif src=="11": #LUI
+            value = self.immediate_extend()
+        else:
+            return
+        register_file[idx] = value % (2**32)
+        
 def fetch(binary_string,instruction_num):
     inst = Instruction(binary_string,instruction_num*(4))
     return(inst)
