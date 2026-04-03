@@ -61,47 +61,7 @@ class Instruction:
         self.PCplusfour = None
         self.read_data = None
     def immediate_extend(self):
-        b = self.imm_ex
-        immsrc = self.control_signals.IMMSRC
-        if immsrc == "000":
-            bits = b[0:12]
-            value = 0
-            for i in range(12):
-                value = value * 2 + int(bits[i])
-            if bits[0] == "1":
-                value = value - 2**12
-            return value
-        if immsrc == "001":
-            bits = b[0:7] + b[20:24] + "0"
-            value = 0
-            for i in range(12):
-                value = value * 2 + int(bits[i])
-            if b[0] == "1":
-                value = value - 2**12
-            return value
-        if immsrc == "011":
-            bits = b[0] + self._full_binary[24] + b[1:7] + b[20:24] + "0"
-            value = 0
-            for i in range(13):
-                value = value * 2 + int(bits[i])
-            if b[0] == "1":
-                value = value - 2**13
-            return value
-        if immsrc == "010":
-            bits = b[0] + b[12:20] + b[11] + b[1:11] + "0"
-            value = 0
-            for i in range(21):
-                value = value * 2 + int(bits[i])
-            if b[0] == "1":
-                value = value - 2**21
-            return value
-        if immsrc == "100":
-            value = 0
-            for i in range(20):
-                value = value * 2 + int(b[i])
-            value = value * 2**12
-            return value
-        return 0
+        
     def ALU_decoder(self):
         op5 = self.opcode[2]
         f75 = self.funct7[1]
