@@ -188,7 +188,40 @@ class Instruction:
         else:
             self.control_signals.gteu = False
     def Memory_read_write(self):
-        {}
+        class MemorySimulationError(Exception):
+            pass
+
+        target_address = self.ALURESULT
+        if self.control_signals.MEMWRITE == "1":
+            if target_address % 4 != 0:
+                raise MemorySimulationError(f"Misaligned memory write attempted at address {target_address}")
+            
+            rs2_idx = int(self.rs2, 2)
+            clamped_value = register_file[rs2_idx] & 0xFFFFFFFF 
+            
+            if 256 <= target_address <= 383:
+                stack_memory[target_address] = clamped_value
+            elif 65536 <= target_address <= 65663:
+                data_memory[target_address] = clamped_value
+            elif 0 <= target_address <= 255:
+                raise MemorySimulationError("Access Violation: Read-only ROM.")
+            else:
+                raise MemorySimulationError(f"Segmentation Fault: Write address {target_address} cannot be routed.")
+                
+        elif self.control_signals.RESULTSRC == "01": # Load data into instruction
+            if target_address % 4 != 0:
+                raise MemorySimulationError(f"Misaligned memory read attempted at address {target_address}")
+                
+            if 0 <= target_address <= 255:
+                self.read_data = program_memory.get(target_address, 0)
+            elif 256 <= target_address <= 383:
+                self.read_data = stack_memory.get(target_address, 0)
+            elif 65536 <= target_address <= 65663:
+                self.read_data = data_memory.get(target_address, 0)
+            else:
+                raise MemorySimulationError(f"Segmentation Fault: Read address {target_address} outside bounds.")
+            
+            
         
     def register_write_back(self):
         if self.control_signals.REGWRITE!=1:
@@ -212,3 +245,91 @@ class Instruction:
 def fetch(binary_string,instruction_num):
     inst = Instruction(binary_string,instruction_num*(4))
     return(inst)
+
+
+instruction_pointer = 0
+
+def bin_stringify(raw_integer):
+    if raw_integer < 0:
+        adjusted = raw_integer + (1 << 32)
+    else:
+        adjusted = raw_integer
+    stripped = str(bin(adjusted & 0xFFFFFFFF))[2:]
+    return stripped.zfill(32)
+
+def export_execution_state(output_stream):
+    if register_file[0] != 0: register_file[0] = 0
+    current_state_line = bin_stringify(instruction_pointer)
+    iterator_index = 0
+    while iterator_index < 32:
+        current_state_line = current_state_line + " " + bin_stringify(register_file[iterator_index])
+        iterator_index += 1
+    output_stream.write(current_state_line + "\n")
+
+def dump_heap_memory(output_stream):
+    scan_address = 65536
+    while scan_address <= 65660:
+        fetched_val = data_memory.get(scan_address, 0)
+        binary_representation = bin_stringify(fetched_val)
+        hex_string = hex(scan_address)[2:]
+        padded_hex = hex_string.rjust(8, '0')
+        output_stream.write("0x" + padded_hex + ":" + binary_representation + "\n")
+        scan_address = scan_address + 4
+
+def engine_start(input_file, trace_file_path):
+    global instruction_pointer
+    instruction_pointer = 0
+    register_file[2] = 380
+
+    # Read binary trace into unified memory structure
+    addr = 0
+    with open(input_file, 'r') as f:
+        for line in f:
+            line = line.strip()
+            if not line: continue
+            program_memory[addr] = int(line, 2)
+            addr += 4
+
+    halting_instruction_hex = 99 
+    cycle_timeout = 1000
+    current_cycle = 0
+
+    with open(trace_file_path, 'w') as output_stream:
+        while current_cycle < cycle_timeout:
+            # Memory fetches are processed via native structures replacing fetch_word_from_bus overhead
+            fetched_instruction = program_memory.get(instruction_pointer, 0)
+            
+            if fetched_instruction == halting_instruction_hex:
+                export_execution_state(output_stream)
+                dump_heap_memory(output_stream)
+                break
+                
+            fetch_bin = bin_stringify(fetched_instruction)
+            inst = Instruction(fetch_bin, instruction_pointer)
+            
+            inst.PCplusfour = instruction_pointer + 4
+            inst.PCplustarget = instruction_pointer + inst.immediate_extend()
+            
+            inst.ALU()
+            inst.control_signals.PCSRC_gen(inst)
+            inst.Memory_read_write()
+            inst.register_write_back()
+            
+            export_execution_state(output_stream)
+            
+            if inst.control_signals.PCSRC:
+                if inst.opcode == "1100111":
+                    instruction_pointer = inst.ALURESULT & ~1
+                else:
+                    instruction_pointer = inst.PCplustarget
+            else:
+                instruction_pointer = inst.PCplusfour
+                
+            current_cycle += 1
+
+if __name__ == "__main__":
+    import sys
+    if len(sys.argv) > 2:
+        engine_start(sys.argv[1], sys.argv[2])
+    else:
+        print("Usage error: You must provide input.txt and trace.txt file path.")
