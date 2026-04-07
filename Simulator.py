@@ -224,7 +224,7 @@ class Instruction:
             
         
     def register_write_back(self):
-        if self.control_signals.REGWRITE!=1:
+        if self.control_signals.REGWRITE!="1":
             return
         idx = int(self.rd,2)
         if idx==0:
