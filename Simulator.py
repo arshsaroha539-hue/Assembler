@@ -208,7 +208,7 @@ class Instruction:
             else:
                 raise MemorySimulationError(f"Segmentation Fault: Write address {target_address} cannot be routed.")
                 
-        elif self.control_signals.RESULTSRC == "01": # Load data into instruction
+        elif self.control_signals.RESULTSRC == "01": 
             if target_address % 4 != 0:
                 raise MemorySimulationError(f"Misaligned memory read attempted at address {target_address}")
                 
@@ -281,7 +281,7 @@ def engine_start(input_file, trace_file_path):
     instruction_pointer = 0
     register_file[2] = 380
 
-    # Read binary trace into unified memory structure
+    
     addr = 0
     with open(input_file, 'r') as f:
         for line in f:
@@ -296,7 +296,6 @@ def engine_start(input_file, trace_file_path):
 
     with open(trace_file_path, 'w') as output_stream:
         while current_cycle < cycle_timeout:
-            # Memory fetches are processed via native structures replacing fetch_word_from_bus overhead
             fetched_instruction = program_memory.get(instruction_pointer, 0)
             
             if fetched_instruction == halting_instruction_hex:
