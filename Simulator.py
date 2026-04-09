@@ -13,7 +13,7 @@ opcode_control_dict= {
     "1101111": ("1", "010", "_", "0", "10", "0", "_", "1"),
     "1100111": ("1", "000", "1", "0", "10", "0", "00", "1"),
     "0110111": ("1", "100", "_", "0", "11", "0", "_", "0"),
-    "0010111": ("1", "100", "1", "0", "11", "0", "00", "0"),
+    "0010111": ("1", "100", "1", "0", "00", "0", "00", "0"),
 }
 class control_signal:
     def __init__(self,instruction,address):
@@ -30,20 +30,24 @@ class control_signal:
         self.zero = None
         self.gte = None
         self.PCSRC = None
-    def PCSRC_gen(self,instruction):
-        self.PCSRC = bool(self.JUMP)
-        if instruction.funct3 == "000":
-            self.PCSRC = bool((self.BRANCH*self.zero) + self.JUMP)
-        elif instruction.funct3 == "001":
-            self.PCSRC = bool((not(self.zero)*self.BRANCH) + self.JUMP)
-        elif instruction.funct3 == "100":
-            self.PCSRC = bool((not(self.gte)*self.BRANCH)+self.JUMP)
-        elif instruction.funct3 == "101":
-            self.PCSRC = bool((self.gte*self.BRANCH)+self.JUMP)
-        elif instruction.funct3 == "110":
-            self.PCSRC = bool((not(self.gteu)*self.BRANCH)+self.JUMP)
-        elif instruction.funct3 == "111":
-            self.PCSRC = bool((self.gteu*self.BRANCH)+self.JUMP)
+    def PCSRC_gen(self, instruction):
+        # Default: no branch/jump
+        take_branch = False
+
+        if self.BRANCH:
+            if instruction.funct3 == "000":      # BEQ
+                take_branch = self.zero
+            elif instruction.funct3 == "001":    # BNE
+                take_branch = not self.zero
+            elif instruction.funct3 == "100":    # BLT
+                take_branch = not self.gte
+            elif instruction.funct3 == "101":    # BGE
+                take_branch = self.gte
+            elif instruction.funct3 == "110":    # BLTU
+                take_branch = not self.gteu
+            elif instruction.funct3 == "111":    # BGEU
+                take_branch = self.gteu
+        self.PCSRC = self.JUMP or take_branch
 class Instruction:
     def __init__(self,binary_instruction,address):
         self.address = address
@@ -53,7 +57,7 @@ class Instruction:
         self.rs1 = binary_instruction[12:17]
         self.rs2 = binary_instruction[7:12]
         self.rd = binary_instruction[20:25]
-        self.imm_ex = binary_instruction[0:24]
+        self.imm_ex = binary_instruction[0:25]
         self._full_binary = binary_instruction
         self.control_signals = control_signal(self,address)
         self.ALURESULT = None
@@ -89,7 +93,7 @@ class Instruction:
             return int(b[0:20],2)*(2**12)
         return 0;
     def ALU_decoder(self):
-        op5 = self.opcode[2]
+        op5 = self.opcode[1]
         f75 = self.funct7[1]
         if self.control_signals.ALUOP == "00":
             return "ADD"
@@ -165,7 +169,7 @@ class Instruction:
             self.control_signals.gteu = True
             return
         operation = self.ALU_decoder()
-        result = self.operations[operation](self, A, B)
+        result = self.operations[operation](self,A, B)
         self.ALURESULT = result % (2**32)
         if A >= 2**31:
             A_signed = A - 2**32
@@ -190,7 +194,6 @@ class Instruction:
     def Memory_read_write(self):
         class MemorySimulationError(Exception):
             pass
-
         target_address = self.ALURESULT
         if self.control_signals.MEMWRITE == "1":
             if target_address % 4 != 0:
@@ -255,8 +258,7 @@ def bin_stringify(raw_integer):
     else:
         adjusted = raw_integer
     stripped = str(bin(adjusted & 0xFFFFFFFF))[2:]
-    return stripped.zfill(32)
-
+    return("0b" + stripped.zfill(32))
 def export_execution_state(output_stream):
     if register_file[0] != 0: register_file[0] = 0
     current_state_line = bin_stringify(instruction_pointer)
@@ -264,14 +266,14 @@ def export_execution_state(output_stream):
     while iterator_index < 32:
         current_state_line = current_state_line + " " + bin_stringify(register_file[iterator_index])
         iterator_index += 1
-    output_stream.write(current_state_line + "\n")
+    output_stream.write(current_state_line.rstrip() + "\n")
 
 def dump_heap_memory(output_stream):
     scan_address = 65536
     while scan_address <= 65660:
         fetched_val = data_memory.get(scan_address, 0)
         binary_representation = bin_stringify(fetched_val)
-        hex_string = hex(scan_address)[2:]
+        hex_string = hex(scan_address)[2:].upper()
         padded_hex = hex_string.rjust(8, '0')
         output_stream.write("0x" + padded_hex + ":" + binary_representation + "\n")
         scan_address = scan_address + 4
@@ -303,7 +305,7 @@ def engine_start(input_file, trace_file_path):
                 dump_heap_memory(output_stream)
                 break
                 
-            fetch_bin = bin_stringify(fetched_instruction)
+            fetch_bin = bin_stringify(fetched_instruction)[2:]
             inst = Instruction(fetch_bin, instruction_pointer)
             
             inst.PCplusfour = instruction_pointer + 4
@@ -314,8 +316,6 @@ def engine_start(input_file, trace_file_path):
             inst.Memory_read_write()
             inst.register_write_back()
             
-            export_execution_state(output_stream)
-            
             if inst.control_signals.PCSRC:
                 if inst.opcode == "1100111":
                     instruction_pointer = inst.ALURESULT & ~1
@@ -323,7 +323,7 @@ def engine_start(input_file, trace_file_path):
                     instruction_pointer = inst.PCplustarget
             else:
                 instruction_pointer = inst.PCplusfour
-                
+            export_execution_state(output_stream)
             current_cycle += 1
 
 if __name__ == "__main__":
